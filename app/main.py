@@ -8,16 +8,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
+from app.dependencies import browser_service as _browser
 from app.routes.analysis import router as analysis_router
 from app.routes.reports import router as reports_router
-from app.services.browser_service import BrowserService
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Singleton browser service shared across route handlers
-_browser = BrowserService()
-
+# Singleton browser service shared across route handlers (imported from
+# dependencies so that routes share the same instance)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
