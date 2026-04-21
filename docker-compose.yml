@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=false
+      - BROWSER_TIMEOUT=30000
+      - REPORTS_DIR=/app/reports
+    volumes:
+      - reports_data:/app/reports
+    restart: unless-stopped
+
+volumes:
+  reports_data:
