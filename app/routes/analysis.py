@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Dict
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.dependencies import analyzer_service as _analyzer_service
+from app.dependencies import browser_service as _browser_service
+from app.dependencies import report_service as _report_service
 from app.models.analysis import (
     AnalysisRequest,
     AnalysisResponse,
@@ -19,11 +22,6 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api", tags=["analysis"])
-
-# Shared service instances (re-used across requests)
-_browser_service: BrowserService = BrowserService()
-_analyzer_service: AnalyzerService = AnalyzerService()
-_report_service: ReportService = ReportService()
 
 
 def get_browser() -> BrowserService:

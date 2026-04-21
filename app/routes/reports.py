@@ -4,14 +4,12 @@ from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.services.report_service import ReportService
+from app.dependencies import report_service as _report_service
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api", tags=["reports"])
-
-_report_service: ReportService = ReportService()
 
 
 @router.get(

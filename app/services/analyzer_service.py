@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from html.parser import HTMLParser
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import urlparse
 
 from app.config import settings
 from app.models.analysis import (
@@ -17,6 +16,7 @@ from app.models.analysis import (
     PerformanceAnalysis,
 )
 from app.utils.logger import get_logger
+from app.utils.metrics import MetricsCollector
 
 logger = get_logger(__name__)
 
@@ -111,21 +111,30 @@ class AnalyzerService:
 
     def analyze(self, page_data: Dict[str, Any]) -> AnalysisResult:
         """Run all analysis passes on *page_data* and return an AnalysisResult."""
+        metrics = MetricsCollector()
         html: str = page_data.get("html", "")
         url: str = page_data.get("url", "")
         perf_raw: Dict[str, Any] = page_data.get("performance", {})
         resource_count: int = page_data.get("resource_count", 0)
         page_size_bytes: int = page_data.get("page_size_bytes", 0)
 
-        parsed = _parse_html(html)
+        with metrics.timer("parse_html"):
+            parsed = _parse_html(html)
 
-        navigation = self._analyze_navigation(parsed, html)
-        forms = self._analyze_forms(parsed)
-        performance = self._analyze_performance(perf_raw, resource_count, page_size_bytes)
-        accessibility = self._analyze_accessibility(parsed)
-        mobile_ux = self._analyze_mobile(parsed, html)
-        content = self._analyze_content(parsed, html)
-        cta = self._analyze_cta(parsed, html)
+        with metrics.timer("navigation"):
+            navigation = self._analyze_navigation(parsed, html)
+        with metrics.timer("forms"):
+            forms = self._analyze_forms(parsed)
+        with metrics.timer("performance"):
+            performance = self._analyze_performance(perf_raw, resource_count, page_size_bytes)
+        with metrics.timer("accessibility"):
+            accessibility = self._analyze_accessibility(parsed)
+        with metrics.timer("mobile_ux"):
+            mobile_ux = self._analyze_mobile(parsed, html)
+        with metrics.timer("content"):
+            content = self._analyze_content(parsed, html)
+        with metrics.timer("cta"):
+            cta = self._analyze_cta(parsed, html)
 
         overall = self._compute_overall_score(
             navigation, forms, performance, accessibility, mobile_ux, content, cta
@@ -140,6 +149,8 @@ class AnalyzerService:
              accessibility.recommendations, mobile_ux.recommendations,
              content.recommendations, cta.recommendations]
         )
+
+        logger.debug("Analysis metrics for %s: %s", url, metrics.all())
 
         return AnalysisResult(
             url=url,
@@ -464,16 +475,28 @@ class AnalyzerService:
         issues: List[str] = []
         recs: List[str] = []
 
-        button_count = parsed.count("button")
         button_attrs = parsed.attrs_for("button")
         anchor_attrs = parsed.attrs_for("a")
 
-        # Identify CTAs by common patterns
+        # Identify CTAs by common text patterns
         cta_patterns = re.compile(
             r'\b(buy|shop|get started|sign up|try|book|order|subscribe|download|contact|learn more)\b',
             re.IGNORECASE,
         )
         cta_count = len(cta_patterns.findall(html))
+
+        # Also count buttons and links whose class/aria-label indicates a CTA
+        cta_button_count = sum(
+            1 for btn in button_attrs
+            if cta_patterns.search(btn.get("class") or "")
+            or cta_patterns.search(btn.get("aria-label") or "")
+        )
+        cta_link_count = sum(
+            1 for anchor in anchor_attrs
+            if cta_patterns.search(anchor.get("class") or "")
+            or cta_patterns.search(anchor.get("aria-label") or "")
+        )
+        cta_count = max(cta_count, cta_button_count + cta_link_count)
         has_primary_cta = cta_count > 0
 
         # Heuristic: CTAs above fold usually appear early in the HTML
@@ -483,7 +506,7 @@ class AnalyzerService:
         # Visibility score based on presence of prominent button styling hints
         has_prominent_style = bool(
             re.search(r'btn-primary|cta|call-to-action|hero', html, re.IGNORECASE)
-        )
+        ) or cta_button_count > 0
         visibility_score = 8.0 if has_prominent_style else 5.0
 
         if not has_primary_cta:

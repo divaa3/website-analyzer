@@ -1,7 +1,7 @@
 """Integration tests for the FastAPI application."""
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -175,11 +175,11 @@ class TestReportsEndpoint:
         assert analyze_resp.status_code == 200
         report_id = analyze_resp.json()["report_id"]
 
-        # Reports route uses its own ReportService instance, so we verify
-        # the endpoint is wired correctly (404 is acceptable here since
-        # services don't share in-memory state across route modules).
+        # Both routes now share the same ReportService singleton via
+        # app.dependencies, so the report must be retrievable.
         get_resp = client.get(f"/api/reports/{report_id}")
-        assert get_resp.status_code in (200, 404)
+        assert get_resp.status_code == 200
+        assert get_resp.json()["report_id"] == report_id
 
 
 # ---------------------------------------------------------------------------
