@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Analyse a URL extracted from a GitHub issue body and print Markdown results.
+"""Analyze a URL extracted from a GitHub issue body and print Markdown results.
 
 Usage (called by the GitHub Actions workflow):
-    ISSUE_BODY="Analyse the UX for https://example.com" python scripts/analyze_url.py
+    ISSUE_BODY="Analyze the UX for https://example.com" python scripts/analyze_url.py
 Or directly:
     python scripts/analyze_url.py "https://example.com"
 """
@@ -53,12 +53,12 @@ def format_report(result: AnalysisResult, url: str) -> str:
     content = result.content
     cta = result.cta
 
-    def yn(flag: bool) -> str:  # noqa: FBT001
+    def format_boolean(flag: bool) -> str:  # noqa: FBT001
         return "✅" if flag else "❌"
 
     form_detail = f"{forms.form_count} form(s)"
     if forms.form_count:
-        form_detail += f" · {forms.avg_field_count} avg fields · {yn(forms.has_validation)} validation"
+        form_detail += f" · {forms.avg_field_count} avg fields · {format_boolean(forms.has_validation)} validation"
 
     lines: list[str] = [
         "## 📊 UX Analysis Report",
@@ -71,9 +71,9 @@ def format_report(result: AnalysisResult, url: str) -> str:
         "|-----------|------:|--------------|",
         (
             f"| 🧭 Navigation | {nav.score}/10 | "
-            f"{yn(nav.has_main_nav)} `<nav>` · "
-            f"{yn(nav.has_breadcrumbs)} breadcrumbs · "
-            f"{yn(nav.has_search)} search · "
+            f"{format_boolean(nav.has_main_nav)} `<nav>` · "
+            f"{format_boolean(nav.has_breadcrumbs)} breadcrumbs · "
+            f"{format_boolean(nav.has_search)} search · "
             f"{nav.link_count} links |"
         ),
         (
@@ -84,8 +84,8 @@ def format_report(result: AnalysisResult, url: str) -> str:
         ),
         (
             f"| ♿ Accessibility | {acc.score}/10 | "
-            f"{yn(acc.heading_structure_valid)} H1 structure · "
-            f"{yn(acc.has_skip_links)} skip link · "
+            f"{format_boolean(acc.heading_structure_valid)} H1 structure · "
+            f"{format_boolean(acc.has_skip_links)} skip link · "
             + (
                 f"❌ {acc.images_without_alt} img(s) missing alt"
                 if acc.images_without_alt
@@ -95,16 +95,16 @@ def format_report(result: AnalysisResult, url: str) -> str:
         ),
         (
             f"| 📱 Mobile UX | {mob.score}/10 | "
-            f"{yn(mob.has_viewport_meta)} viewport · "
-            f"{yn(mob.is_responsive)} responsive · "
-            f"{yn(mob.font_size_adequate)} font size |"
+            f"{format_boolean(mob.has_viewport_meta)} viewport · "
+            f"{format_boolean(mob.is_responsive)} responsive · "
+            f"{format_boolean(mob.font_size_adequate)} font size |"
         ),
         f"| 📝 Forms | {forms.score}/10 | {form_detail} |",
         (
             f"| 📄 Content | {content.score}/10 | "
             f"{content.word_count} words · "
             f"{content.heading_count} headings · "
-            f"{yn(content.has_clear_value_proposition)} value prop |"
+            f"{format_boolean(content.has_clear_value_proposition)} value prop |"
         ),
         (
             f"| 🎯 CTA | {cta.score}/10 | "
@@ -129,7 +129,7 @@ def format_report(result: AnalysisResult, url: str) -> str:
     lines += [
         "---",
         (
-            f"*Analysed at {result.analyzed_at.strftime('%Y-%m-%d %H:%M UTC')} · "
+            f"*Analyzed at {result.analyzed_at.strftime('%Y-%m-%d %H:%M UTC')} · "
             "[Website Analyzer](https://github.com/divaa3/website-analyzer)*"
         ),
         (
